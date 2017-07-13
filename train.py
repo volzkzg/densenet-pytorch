@@ -92,12 +92,12 @@ def main():
     # create model
     model = dn.DenseNet3(args.layers, 10, args.growth, reduction=args.reduce,
                          bottleneck=args.bottleneck, dropRate=args.droprate)
-    
+
     # get the number of model parameters
     print('Number of model parameters: {}'.format(
         sum([p.data.nelement() for p in model.parameters()])))
-    
-    # for training on multiple GPUs. 
+
+    # for training on multiple GPUs.
     # Use CUDA_VISIBLE_DEVICES=0,1 to specify which GPUs to use
     # model = torch.nn.DataParallel(model).cuda()
     model = model.cuda()
@@ -170,6 +170,7 @@ def train(train_loader, model, criterion, optimizer, epoch):
         # compute gradient and do SGD step
         optimizer.zero_grad()
         loss.backward()
+        add_regularization(model, 1.0)
         optimizer.step()
 
         # measure elapsed time
@@ -284,6 +285,12 @@ def accuracy(output, target, topk=(1,)):
         correct_k = correct[:k].view(-1).float().sum(0)
         res.append(correct_k.mul_(100.0 / batch_size))
     return res
+
+def add_regularization(model, reg_param):
+    for i in range(model.nblayer):
+        weight = model.block1.layer[i].bn1.weight
+        for j in range(0, len(weight.grad.data), 2):
+            weight.grad.data[j] += 2.0 * reg_param * weight.data[j]
 
 if __name__ == '__main__':
     main()

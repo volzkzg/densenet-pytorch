@@ -59,7 +59,7 @@ class DenseBlock(nn.Module):
         self.layer = self._make_layer(block, in_planes, growth_rate, nb_layers, dropRate)
     def _make_layer(self, block, in_planes, growth_rate, nb_layers, dropRate):
         layers = []
-        for i in range(int(nb_layers)):
+        for i in range(nb_layers):
             layers.append(block(in_planes+i*growth_rate, growth_rate, dropRate))
         return nn.Sequential(*layers)
     def forward(self, x):
@@ -72,10 +72,11 @@ class DenseNet3(nn.Module):
         in_planes = 2 * growth_rate
         n = (depth - 4) / 3
         if bottleneck == True:
-            n = n/2
+            n = int(n / 2)
             block = BottleneckBlock
         else:
             block = BasicBlock
+        self.nblayer = n
         # 1st conv before any dense block
         self.conv1 = nn.Conv2d(3, in_planes, kernel_size=3, stride=1,
                                padding=1, bias=False)
