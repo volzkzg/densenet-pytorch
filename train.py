@@ -170,7 +170,7 @@ def train(train_loader, model, criterion, optimizer, epoch):
         # compute gradient and do SGD step
         optimizer.zero_grad()
         loss.backward()
-        add_regularization(model, 1.0)
+        add_regularization(model, 1.0, 0.95)
         optimizer.step()
 
         # measure elapsed time
@@ -286,11 +286,27 @@ def accuracy(output, target, topk=(1,)):
         res.append(correct_k.mul_(100.0 / batch_size))
     return res
 
-def add_regularization(model, reg_param):
+
+def add_regularization(model, reg_param, decay):
     for i in range(model.nblayer):
         weight = model.block1.layer[i].bn1.weight
-        for j in range(0, len(weight.grad.data), 2):
-            weight.grad.data[j] += 2.0 * reg_param * weight.data[j]
+        reg = reg_param
+        for j in range(len(weight.grad.data) - 4, -1, -2):
+            reg *= decay
+            weight.grad.data[j] += 0.5 * reg * weight.data[j]
+    for i in range(model.nblayer):
+        weight = model.block2.layer[i].bn1.weight
+        reg = reg_param
+        for j in range(len(weight.grad.data) - 4, -1, -2):
+            reg *= decay
+            weight.grad.data[j] += 1.0 * reg * weight.data[j]
+    for i in range(model.nblayer):
+        weight = model.block3.layer[i].bn1.weight
+        reg = reg_param
+        for j in range(len(weight.grad.data) - 4, -1, -2):
+            reg *= decay
+            weight.grad.data[j] += 2.0 * reg * weight.data[j]
+
 
 if __name__ == '__main__':
     main()
