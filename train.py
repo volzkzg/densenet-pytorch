@@ -58,11 +58,11 @@ def main():
     global args, best_prec1
     args = parser.parse_args()
     if args.tensorboard: configure("runs/%s"%(args.name))
-    
+
     # Data loading code
     normalize = transforms.Normalize(mean=[x/255.0 for x in [125.3, 123.0, 113.9]],
                                      std=[x/255.0 for x in [63.0, 62.1, 66.7]])
-    
+
     if args.augment:
         transform_train = transforms.Compose([
             transforms.RandomCrop(32, padding=4),
@@ -123,14 +123,19 @@ def main():
                                 momentum=args.momentum,
                                 weight_decay=args.weight_decay)
 
+    training_res = []
+    validation_res = []
+
     for epoch in range(args.start_epoch, args.epochs):
         adjust_learning_rate(optimizer, epoch)
 
         # train for one epoch
-        train(train_loader, model, criterion, optimizer, epoch)
+        prec_avg = train(train_loader, model, criterion, optimizer, epoch)
+        training_res.append(prec_avg)
 
         # evaluate on validation set
         prec1 = validate(val_loader, model, criterion, epoch)
+        validation_res.append(prec1)
 
         # remember best prec@1 and save checkpoint
         is_best = prec1 > best_prec1
@@ -141,6 +146,17 @@ def main():
             'best_prec1': best_prec1,
         }, is_best)
     print('Best accuracy: ', best_prec1)
+
+    file_path = os.path.join("./runs", args.name);
+    with open(file_path + '/train_res', "w")  as file:
+        for item in training_res:
+            file.write(str(item))
+            file.write('\n')
+    with open(os.path.join(file_path, "val_res"), "w") as file:
+        for item in validation_res:
+            file.write(str(item))
+            file.write('\n')
+
 
 def train(train_loader, model, criterion, optimizer, epoch):
     """Train for one epoch on the training set"""
@@ -188,6 +204,9 @@ def train(train_loader, model, criterion, optimizer, epoch):
     if args.tensorboard:
         log_value('train_loss', losses.avg, epoch)
         log_value('train_acc', top1.avg, epoch)
+
+    return top1.avg
+
 
 def validate(val_loader, model, criterion, epoch):
     """Perform validation on the validation set"""
