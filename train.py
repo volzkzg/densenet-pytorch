@@ -123,19 +123,23 @@ def main():
                                 momentum=args.momentum,
                                 weight_decay=args.weight_decay)
 
-    training_res = []
-    validation_res = []
+    file_path = os.path.join("./runs", args.name)
+    if not os.path.exists(file_path):
+        os.makedirs(file_path)
+    file1 = open(file_path + '/train_res', 'w')
+    file2 = open(file_path + '/val_res', 'w')
 
     for epoch in range(args.start_epoch, args.epochs):
         adjust_learning_rate(optimizer, epoch)
-
         # train for one epoch
         prec_avg = train(train_loader, model, criterion, optimizer, epoch)
-        training_res.append(prec_avg)
+        file1.write(str(prec_avg))
+        file2.write('\n')
 
         # evaluate on validation set
         prec1 = validate(val_loader, model, criterion, epoch)
-        validation_res.append(prec1)
+        file2.write(str(prec1))
+        file2.write('\n')
 
         # remember best prec@1 and save checkpoint
         is_best = prec1 > best_prec1
@@ -145,17 +149,10 @@ def main():
             'state_dict': model.state_dict(),
             'best_prec1': best_prec1,
         }, is_best)
-    print('Best accuracy: ', best_prec1)
 
-    file_path = os.path.join("./runs", args.name);
-    with open(file_path + '/train_res', "w")  as file:
-        for item in training_res:
-            file.write(str(item))
-            file.write('\n')
-    with open(os.path.join(file_path, "val_res"), "w") as file:
-        for item in validation_res:
-            file.write(str(item))
-            file.write('\n')
+    print('Best accuracy: ', best_prec1)
+    file1.close()
+    file2.close()
 
 
 def train(train_loader, model, criterion, optimizer, epoch):
@@ -186,7 +183,7 @@ def train(train_loader, model, criterion, optimizer, epoch):
         # compute gradient and do SGD step
         optimizer.zero_grad()
         loss.backward()
-        add_regularization(model, 1.0, 0.95)
+        # add_regularization(model, 1.0, 0.95)
         optimizer.step()
 
         # measure elapsed time
@@ -310,19 +307,19 @@ def add_regularization(model, reg_param, decay):
     for i in range(model.nblayer):
         weight = model.block1.layer[i].bn1.weight
         reg = reg_param
-        for j in range(len(weight.grad.data) - 4, -1, -2):
+        for j in range(len(weight.grad.data) - 2, -1, -1):
             reg *= decay
             weight.grad.data[j] += 0.5 * reg * weight.data[j]
     for i in range(model.nblayer):
         weight = model.block2.layer[i].bn1.weight
         reg = reg_param
-        for j in range(len(weight.grad.data) - 4, -1, -2):
+        for j in range(len(weight.grad.data) - 2, -1, -1):
             reg *= decay
             weight.grad.data[j] += 1.0 * reg * weight.data[j]
     for i in range(model.nblayer):
         weight = model.block3.layer[i].bn1.weight
         reg = reg_param
-        for j in range(len(weight.grad.data) - 4, -1, -2):
+        for j in range(len(weight.grad.data) - 2, -1, -1):
             reg *= decay
             weight.grad.data[j] += 2.0 * reg * weight.data[j]
 

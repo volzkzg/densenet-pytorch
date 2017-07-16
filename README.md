@@ -1,3 +1,16 @@
+# Set up tensorboard
+
+In you want to watch the training progress, you can use the tensorboard. 
+
+First, you need to run the tensorboard in remote server
+```
+tensorboard --logdir [runs-name]
+```
+Second, you need to setup reverse proxy in your own computer
+```
+ssh -NL 6006:localhost:6006 [remote server confiugration]
+```
+Third, open your browser and visit localhost:6006 you will see the tensorboard pages.
 # A PyTorch Implementation for Densely Connected Convolutional Networks (DenseNets)
 
 This repository contains a [PyTorch](http://pytorch.org/) implementation of the paper [Densely Connected Convolutional Networks](http://arxiv.org/abs/1608.06993). The code is based on the excellent [PyTorch example for training ResNet on Imagenet](https://github.com/pytorch/examples/tree/master/imagenet).
