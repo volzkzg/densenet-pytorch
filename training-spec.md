@@ -6,3 +6,5 @@
 - 3e5      With Regularization (3e-5, 0.95)
 - 4e5      With Regularization (4e-5, 0.95)
 - 5e5      With Regularization (5e-5, 0.95)
+- jbn      Without Regularization
+- reversedecay With the Reversedecay (more rely on the deep info)
