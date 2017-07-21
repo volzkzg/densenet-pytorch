@@ -8,3 +8,6 @@
 - 5e5      With Regularization (5e-5, 0.95)
 - jbn      Without Regularization
 - reversedecay With the Reversedecay (more rely on the deep info)
+- half_trainingdata_origin: half the training data, Without regularization
+_ half_trainingdata_reg1e4lr95: half the training data, With regularization (1e-4, 0.95)
+_ half_trainingdata_reg5e5lr95: half the training data, With regularization (5e-5, 0.95)
