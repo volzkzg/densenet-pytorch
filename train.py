@@ -22,7 +22,7 @@ parser.add_argument('--epochs', default=300, type=int,
                     help='number of total epochs to run')
 parser.add_argument('--start-epoch', default=0, type=int,
                     help='manual epoch number (useful on restarts)')
-parser.add_argument('-b', '--batch-size', default=64, type=int,
+parser.add_argument('-b', '--batch-size', default=256, type=int,
                     help='mini-batch size (default: 64)')
 parser.add_argument('--lr', '--learning-rate', default=0.1, type=float,
                     help='initial learning rate')
@@ -82,11 +82,11 @@ def main():
 
     kwargs = {'num_workers': 1, 'pin_memory': True}
     train_loader = torch.utils.data.DataLoader(
-        datasets.CIFAR10('../data', train=True, download=True,
+        datasets.CIFAR10('/home/gh349/bicheng/data/', train=True, download=True,
                          transform=transform_train),
         batch_size=args.batch_size, shuffle=True, **kwargs)
     val_loader = torch.utils.data.DataLoader(
-        datasets.CIFAR10('../data', train=False, transform=transform_test),
+        datasets.CIFAR10('/home/gh349/bicheng/data/', train=False, transform=transform_test),
         batch_size=args.batch_size, shuffle=True, **kwargs)
 
     # create model
@@ -99,8 +99,8 @@ def main():
 
     # for training on multiple GPUs.
     # Use CUDA_VISIBLE_DEVICES=0,1 to specify which GPUs to use
-    # model = torch.nn.DataParallel(model).cuda()
-    model = model.cuda()
+    model = torch.nn.DataParallel(model).cuda()
+    # model = model.cuda()
 
     # optionally resume from a checkpoint
     if args.resume:
@@ -178,12 +178,14 @@ def train(train_loader, model, criterion, optimizer, epoch):
         # measure accuracy and record loss
         prec1 = accuracy(output.data, target, topk=(1,))[0]
         losses.update(loss.data[0], input.size(0))
+        # print(top1.avg, top1.count)
+        # print(prec1[0], input.size(0))
         top1.update(prec1[0], input.size(0))
 
         # compute gradient and do SGD step
         optimizer.zero_grad()
         loss.backward()
-        # add_regularization(model, 1.0, 0.95)
+        #add_regularization(model, -args.weight_decay, 1.0)
         optimizer.step()
 
         # measure elapsed time
@@ -228,6 +230,9 @@ def validate(val_loader, model, criterion, epoch):
         # measure accuracy and record loss
         prec1 = accuracy(output.data, target, topk=(1,))[0]
         losses.update(loss.data[0], input.size(0))
+        print(top1.avg, top1.count)
+        print(prec1[0], input.size(0))
+
         top1.update(prec1[0], input.size(0))
 
         # measure elapsed time
@@ -308,19 +313,19 @@ def add_regularization(model, reg_param, decay):
         weight = model.block1.layer[i].bn1.weight
         reg = reg_param
         for j in range(len(weight.grad.data) - 2, -1, -1):
-            reg *= decay
+            # reg *= decay
             weight.grad.data[j] += 0.5 * reg * weight.data[j]
     for i in range(model.nblayer):
         weight = model.block2.layer[i].bn1.weight
         reg = reg_param
         for j in range(len(weight.grad.data) - 2, -1, -1):
-            reg *= decay
+            # reg *= decay
             weight.grad.data[j] += 1.0 * reg * weight.data[j]
     for i in range(model.nblayer):
         weight = model.block3.layer[i].bn1.weight
         reg = reg_param
         for j in range(len(weight.grad.data) - 2, -1, -1):
-            reg *= decay
+            # reg *= decay
             weight.grad.data[j] += 2.0 * reg * weight.data[j]
 
 
