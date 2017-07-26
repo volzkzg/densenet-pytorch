@@ -29,6 +29,8 @@ parser.add_argument('--lr', '--learning-rate', default=0.1, type=float,
 parser.add_argument('--momentum', default=0.9, type=float, help='momentum')
 parser.add_argument('--weight-decay', '--wd', default=1e-4, type=float,
                     help='weight decay (default: 1e-4)')
+parser.add_argument('--batchnorm-decay', '--bd', default=1e-4, type=float,
+                    help='batchnorm decay (default: 1e-4)')
 parser.add_argument('--print-freq', '-p', default=10, type=int,
                     help='print frequency (default: 10)')
 parser.add_argument('--layers', default=100, type=int,
@@ -143,7 +145,7 @@ def main():
 
         if args.tensorboard:
             log_value("generalization error", prec_avg - prec1, epoch)
-            
+
         # remember best prec@1 and save checkpoint
         is_best = prec1 > best_prec1
         best_prec1 = max(prec1, best_prec1)
@@ -188,7 +190,7 @@ def train(train_loader, model, criterion, optimizer, epoch):
         # compute gradient and do SGD step
         optimizer.zero_grad()
         loss.backward()
-        #add_regularization(model, -args.weight_decay, 1.0)
+        add_regularization(model, args.batchnorm_decay, 1.0)
         optimizer.step()
 
         # measure elapsed time
