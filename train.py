@@ -141,6 +141,9 @@ def main():
         file2.write(str(prec1))
         file2.write('\n')
 
+        if args.tensorboard:
+            log_value("generalization error", prec_avg - prec1, epoch)
+            
         # remember best prec@1 and save checkpoint
         is_best = prec1 > best_prec1
         best_prec1 = max(prec1, best_prec1)
