@@ -1,3 +1,13 @@
+# Task to do
+@vincent, you need to finalize the method add_combined_reg and add_separate_reg using two parameters **model** and **param**, **param** denotes the regularization upper bound.
+
+Training command:
+python2 train.py --name=[name] --tensorboard --reg=[regularization parameter] --reg-method=[reg method number]
+
+## reg method specification
+0: for combined regularization
+1: for separated regularization
+
 # Set up tensorboard
 
 In you want to watch the training progress, you can use the tensorboard. 
