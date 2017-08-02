@@ -5,8 +5,8 @@ Training command:
 python2 train.py --name=[name] --tensorboard --reg=[regularization parameter] --reg-method=[reg method number]
 
 ## reg method specification
-0: for combined regularization
-1: for separated regularization
+1: for combined regularization
+2: for separated regularization
 
 # Set up tensorboard
 

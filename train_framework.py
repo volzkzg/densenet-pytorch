@@ -232,8 +232,8 @@ def validate(val_loader, model, criterion, epoch):
     print(' * Prec@1 {top1.avg:.3f}'.format(top1=top1))
     # log to TensorBoard
     if args.tensorboard:
-        log_value('val_loss', losses.avg, epoch)
-        log_value('val_acc', top1.avg, epoch)
+        log_value('val_loss' + suffix, losses.avg, epoch)
+        log_value('val_acc' + suffix, top1.avg, epoch)
     return top1.avg
 
 
@@ -260,7 +260,7 @@ def adjust_learning_rate(optimizer, epoch):
     lr = args.lr * (0.1 ** (epoch // 150)) * (0.1 ** (epoch // 225))
     # log to TensorBoard
     if args.tensorboard:
-        log_value('learning_rate', lr, epoch)
+        log_value('learning_rate' + suffix, lr, epoch)
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
 
@@ -281,8 +281,10 @@ def accuracy(output, target, topk=(1,)):
 
 
 def add_regularization(model, reg_method, param):
-    {0: add_combined_reg(model, param),
-     1: add_separate_reg(model, param)}[reg_method]
+    if (reg_method <= 0 or reg_method > 2):
+        return
+    {1: add_combined_reg(model, param),
+     2: add_separate_reg(model, param)}[reg_method]
 
 
 def add_combined_reg(model, param):
