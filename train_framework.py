@@ -212,8 +212,8 @@ def validate(val_loader, model, criterion, epoch):
         # measure accuracy and record loss
         prec1 = accuracy(output.data, target, topk=(1,))[0]
         losses.update(loss.data[0], input.size(0))
-        print(top1.avg, top1.count)
-        print(prec1[0], input.size(0))
+        # print(top1.avg, top1.count)
+        # print(prec1[0], input.size(0))
 
         top1.update(prec1[0], input.size(0))
 
