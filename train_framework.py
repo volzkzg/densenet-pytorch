@@ -295,16 +295,16 @@ def add_combined_reg(model, param):
             reg = ((i+1)*param/model.nblayer)
             weight = model.block1.layer[j].bn1.weight
             feature = model.block1.layer[j].conv1.weight
-            print feature.data
+            print 'feature.data', feature.data
             # take the square of each element in the feature maps
             feature_sum = feature**2
             # sum all 48 feature maps of the convolution layer
             feature_sum = feature_sum.sum(0)
             feature_sum = (feature_sum.view_as(weight.data)) # expand the feature sum into a tensor with same dimensions as BN weights
-            
-            print weight.grad.data
+            print 'feature_sum', feature_sum
+            print 'weight.grad /n', weight.grad.data
             weight.grad.data[init_features+(i)*12:init_features+(i+1)*12]+= reg*(feature_sum.data[init_features+i*12:init_features+(i+1)*12])*(weight.data[init_features+(i)*12:init_features+(i+1)*12])
-            print weight.grad.data
+            print 'weight.grad after', weight.grad.data
             print '##'
 
             for k in range(48):
