@@ -91,10 +91,10 @@ def main():
         tmp_train = random.sample(dataset_train, size)
         tmp_test = dataset_test
         kwargs = {'num_workers': 12, 'pin_memory': True}
-        train_loader = torch.util.data.DataLoader(
+        train_loader = torch.utils.data.DataLoader(
             tmp_train,
             batch_size=args.batch_size, shuffle=True, **kwargs)
-        val_loader = torch.util.data.DataLoader(
+        val_loader = torch.utils.data.DataLoader(
             tmp_test,
             batch_size=args.batch_size, shuffle=True, **kwargs)
 
@@ -310,7 +310,7 @@ def add_combined_reg(model, param):
             for k in range(48):
                 feature.grad.data[k][init_features+i*12:init_features+(i+1)*12]+=reg*feature.data[k][init_features+i*12:init_features+(i+1)*12]*(weight.data[init_features+(i)*12:init_features+(i+1)*12])**2
     exit(0)
-    
+
     init_features = len(model.block2.layer[0].bn1.weight.data)
     for j in range(1, model.nblayer):
         reg = reg_param
