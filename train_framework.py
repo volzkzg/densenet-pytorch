@@ -291,64 +291,90 @@ def add_combined_reg(model, param):
     init_features = len(model.block1.layer[0].bn1.weight.data)
     for j in range(1, model.nblayer):
         reg = param
+        weight = model.block1.layer[j].bn1.weight
+        feature = model.block1.layer[j].conv1.weight
+
+        print('feature.data', feature.data)
+        # take the square of each element in the feature maps
+        feature_sum = feature**2
+        # sum all 48 feature maps of the convolution layer
+        feature_sum = feature_sum.sum(0)
+        feature_sum = (feature_sum.view_as(weight.data)) # expand the feature sum into a tensor with same dimensions as BN weights
+        print('feature_sum', feature_sum)
+
         for i in range(j):
             reg = ((i+1)*param/model.nblayer)
-            weight = model.block1.layer[j].bn1.weight
-            feature = model.block1.layer[j].conv1.weight
-            print 'feature.data', feature.data
-            # take the square of each element in the feature maps
-            feature_sum = feature**2
-            # sum all 48 feature maps of the convolution layer
-            feature_sum = feature_sum.sum(0)
-            feature_sum = (feature_sum.view_as(weight.data)) # expand the feature sum into a tensor with same dimensions as BN weights
-            print 'feature_sum', feature_sum
-            print 'weight.grad /n', weight.grad.data
-            weight.grad.data[init_features+(i)*12:init_features+(i+1)*12]+= reg*(feature_sum.data[init_features+i*12:init_features+(i+1)*12])*(weight.data[init_features+(i)*12:init_features+(i+1)*12])
-            print 'weight.grad after', weight.grad.data
-            print '##'
+            st = init_features + i * 12
+            ed = st + 12
+            print('weight.grad /n', weight.grad.data)
+            bn_grad = weight.grad.data[st:ed]
+            bn_data = weight.data[st:ed]
+            feature_sum_data = feature_sum.data[st:ed]
+            bn_grad += reg * feature_sum_data * bn_data
+            print('weight.grad after', weight.grad.data)
+            print('##')
 
             for k in range(48):
-                feature.grad.data[k][init_features+i*12:init_features+(i+1)*12]+=reg*feature.data[k][init_features+i*12:init_features+(i+1)*12]*(weight.data[init_features+(i)*12:init_features+(i+1)*12])**2
+                gamma = weight.data[st:ed]
+                gamma = gamma ** 2
+                conv_grad = feature.grad.data[k][st:ed]
+                conv_data = feature.data[k][st:ed]
+                conv_grad += reg * conv_data * gamma
     exit(0)
 
     init_features = len(model.block2.layer[0].bn1.weight.data)
     for j in range(1, model.nblayer):
         reg = param
+        weight = model.block2.layer[j].bn1.weight
+        feature = model.block2.layer[j].conv1.weight
+        # take the square of each element in the feature maps
+        feature_sum = feature**2
+        # sum all 48 feature maps of the convolution layer
+        feature_sum = feature_sum.sum(0)
+        feature_sum = (feature_sum.view_as(weight.data)) # expand the feature sum into a tensor with same dimensions as BN weights
+
         for i in range(j):
             reg = ((i+1)*param/model.nblayer)
-            weight = model.block2.layer[j].bn1.weight
-            feature = model.block2.layer[j].conv1.weight
-            
-            # take the square of each element in the feature maps
-            feature_sum = feature**2
-            # sum all 48 feature maps of the convolution layer
-            feature_sum = feature_sum.sum(0)
-            feature_sum = (feature_sum.view_as(weight.data)) # expand the feature sum into a tensor with same dimensions as BN weights
-            weight.grad.data[init_features+(i)*12:init_features+(i+1)*12]+= reg*(feature_sum.data[init_features+i*12:init_features+(i+1)*12])*(weight.data[init_features+(i)*12:init_features+(i+1)*12])
+            st = init_features + i * 12
+            ed = st + 12
+            bn_grad = weight.grad.data[st:ed]
+            bn_data = weight.data[st:ed]
+            feature_sum_data = feature_sum.data[st:ed]
+            bn_grad += reg * feature_sum_data * bn_data
 
             for k in range(48):
-                feature.grad.data[k][init_features+i*12:init_features+(i+1)*12]+=reg*feature.data[k][init_features+i*12:init_features+(i+1)*12]*(weight.data[init_features+(i)*12:init_features+(i+1)*12])**2
+                gamma = weight.data[st:ed]
+                gamma = gamma ** 2
+                conv_grad = feature.grad.data[k][st:ed]
+                conv_data = feature.data[k][st:ed]
+                conv_grad += reg * conv_data * gamma
 
     init_features = len(model.block3.layer[0].bn1.weight.data)
     for j in range(1, model.nblayer):
         reg = param
+        weight = model.block3.layer[j].bn1.weight
+        feature = model.block3.layer[j].conv1.weight
+        # take the square of each element in the feature maps
+        feature_sum = feature**2
+        # sum all 48 feature maps of the convolution layer
+        feature_sum = feature_sum.sum(0)
+        feature_sum = (feature_sum.view_as(weight.data)) # expand the feature sum into a tensor with same dimensions as BN weights
+
         for i in range(j):
             reg = ((i+1)*param/model.nblayer)
-            weight = model.block3.layer[j].bn1.weight
-            feature = model.block3.layer[j].conv1.weight
-            
-            # take the square of each element in the feature maps
-            feature_sum = feature**2
-            # sum all 48 feature maps of the convolution layer
-            feature_sum = feature_sum.sum(0)
-            feature_sum = (feature_sum.view_as(weight.data)) # expand the feature sum into a tensor with same dimensions as BN weights
-            weight.grad.data[init_features+(i)*12:init_features+(i+1)*12]+= reg*(feature_sum.data[init_features+i*12:init_features+(i+1)*12])*(weight.data[init_features+(i)*12:init_features+(i+1)*12])
+            st = init_features + i * 12
+            ed = st + 12
+            bn_grad = weight.grad.data[st:ed]
+            bn_data = weight.data[st:ed]
+            feature_sum_data = feature_sum.data[st:ed]
+            bn_grad += reg * feature_sum_data * bn_data
 
             for k in range(48):
-                feature.grad.data[k][init_features+i*12:init_features+(i+1)*12]+=reg*feature.data[k][init_features+i*12:init_features+(i+1)*12]*(weight.data[init_features+(i)*12:init_features+(i+1)*12])**2
-
-    
-
+                gamma = weight.data[st:ed]
+                gamma = gamma ** 2
+                conv_grad = feature.grad.data[k][st:ed]
+                conv_data = feature.data[k][st:ed]
+                conv_grad += reg * conv_data * gamma
 
 
 def add_separate_reg(model, param):
