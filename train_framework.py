@@ -290,9 +290,9 @@ def add_combined_reg(model, param):
 
     init_features = len(model.block1.layer[0].bn1.weight.data)
     for j in range(1, model.nblayer):
-        reg = reg_param
+        reg = param
         for i in range(j):
-            reg = ((i+1)*reg_param/model.nblayer)
+            reg = ((i+1)*param/model.nblayer)
             weight = model.block1.layer[j].bn1.weight
             feature = model.block1.layer[j].conv1.weight
             print feature.data
@@ -313,9 +313,9 @@ def add_combined_reg(model, param):
 
     init_features = len(model.block2.layer[0].bn1.weight.data)
     for j in range(1, model.nblayer):
-        reg = reg_param
+        reg = param
         for i in range(j):
-            reg = ((i+1)*reg_param/model.nblayer)
+            reg = ((i+1)*param/model.nblayer)
             weight = model.block2.layer[j].bn1.weight
             feature = model.block2.layer[j].conv1.weight
             
@@ -331,9 +331,9 @@ def add_combined_reg(model, param):
 
     init_features = len(model.block3.layer[0].bn1.weight.data)
     for j in range(1, model.nblayer):
-        reg = reg_param
+        reg = param
         for i in range(j):
-            reg = ((i+1)*reg_param/model.nblayer)
+            reg = ((i+1)*param/model.nblayer)
             weight = model.block3.layer[j].bn1.weight
             feature = model.block3.layer[j].conv1.weight
             
