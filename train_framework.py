@@ -61,6 +61,7 @@ parser.set_defaults(augment=True)
 
 
 def main():
+    random.seed(3423432)
     global args, best_acc, suffix
 
     datasize = [1000, 2000, 4000, 8000, 16000, 32000, 50000]
@@ -88,7 +89,7 @@ def main():
 
     for size in datasize:
         suffix = " - " + str(size)
-        tmp_train = random.sample(dataset_train, size)
+        tmp_train = random.sample(list(dataset_train), size)
         tmp_test = dataset_test
         kwargs = {'num_workers': 12, 'pin_memory': True}
         train_loader = torch.utils.data.DataLoader(
