@@ -27,7 +27,7 @@ parser.add_argument('-b', '--batch-size', default=64, type=int,
 parser.add_argument('--lr', '--learning-rate', default=0.1, type=float,
                     help='initial learning rate')
 parser.add_argument('--momentum', default=0.9, type=float, help='momentum')
-parser.add_argument('--weight-decay', '--wd', default=1e-4, type=float,
+parser.add_argument('--weight-decay', '--wd', default=1.8e-4, type=float,
                     help='weight decay (default: 1e-4)')
 parser.add_argument('--print-freq', '-p', default=10, type=int,
                     help='print frequency (default: 10)')
@@ -183,7 +183,9 @@ def train(train_loader, model, criterion, optimizer, epoch):
         # compute gradient and do SGD step
         optimizer.zero_grad()
         loss.backward()
-        # add_regularization(model, 1.0, 0.95)
+        ###############################################################################
+        add_regularization(model, 1.8e-4, 12)
+        ###############################################################################
         optimizer.step()
 
         # measure elapsed time
@@ -203,6 +205,39 @@ def train(train_loader, model, criterion, optimizer, epoch):
         log_value('train_acc', top1.avg, epoch)
 
     return top1.avg
+
+
+def add_regularization(model, reg, growth_rate):
+    for i in range(model.nblayer):
+        weight = model.block1.layer[i].bn1.weight
+        # for j in range(len(weight.grad.data) - 2, -1, -1):
+        #     reg *= decay
+        #     weight.grad.data[j] += 1.0 * reg * weight.data[j]
+        for j in range(0, len(weight.grad.data)-1):
+            if j < 2 * growth_rate:
+                weight.grad.data[j] += reg * weight.data[j] / ((len(weight.grad.data) + 1) // growth_rate);
+            else:
+                weight.grad.data[j] += reg * weight.data[j] / ((len(weight.grad.data) + 1) // growth_rate) * (j // growth_rate + 1);
+    for i in range(model.nblayer):
+        weight = model.block2.layer[i].bn1.weight
+        # for j in range(len(weight.grad.data) - 2, -1, -1):
+        #     reg *= decay
+        #     weight.grad.data[j] += 1.0 * reg * weight.data[j]
+        for j in range(0, len(weight.grad.data)-1):
+            if j < 2 * growth_rate:
+                weight.grad.data[j] += reg * weight.data[j] / ((len(weight.grad.data) + 1) // growth_rate);
+            else:
+                weight.grad.data[j] += reg * weight.data[j] / ((len(weight.grad.data) + 1) // growth_rate) * (j // growth_rate + 1);
+    for i in range(model.nblayer):
+        weight = model.block3.layer[i].bn1.weight
+        # for j in range(len(weight.grad.data) - 2, -1, -1):
+        #     reg *= decay
+        #     weight.grad.data[j] += 1.0 * reg * weight.data[j]
+        for j in range(0, len(weight.grad.data)-1):
+            if j < 2 * growth_rate:
+                weight.grad.data[j] += reg * weight.data[j] / ((len(weight.grad.data) + 1) // growth_rate);
+            else:
+                weight.grad.data[j] += reg * weight.data[j] / ((len(weight.grad.data) + 1) // growth_rate) * (j // growth_rate + 1);
 
 
 def validate(val_loader, model, criterion, epoch):
@@ -301,27 +336,6 @@ def accuracy(output, target, topk=(1,)):
         correct_k = correct[:k].view(-1).float().sum(0)
         res.append(correct_k.mul_(100.0 / batch_size))
     return res
-
-
-def add_regularization(model, reg_param, decay):
-    for i in range(model.nblayer):
-        weight = model.block1.layer[i].bn1.weight
-        reg = reg_param
-        for j in range(len(weight.grad.data) - 2, -1, -1):
-            reg *= decay
-            weight.grad.data[j] += 0.5 * reg * weight.data[j]
-    for i in range(model.nblayer):
-        weight = model.block2.layer[i].bn1.weight
-        reg = reg_param
-        for j in range(len(weight.grad.data) - 2, -1, -1):
-            reg *= decay
-            weight.grad.data[j] += 1.0 * reg * weight.data[j]
-    for i in range(model.nblayer):
-        weight = model.block3.layer[i].bn1.weight
-        reg = reg_param
-        for j in range(len(weight.grad.data) - 2, -1, -1):
-            reg *= decay
-            weight.grad.data[j] += 2.0 * reg * weight.data[j]
 
 
 if __name__ == '__main__':
