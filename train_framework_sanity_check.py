@@ -14,6 +14,7 @@ import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 
 import densenet as dn
+import numpy as np
 
 # used for logging to TensorBoard
 from tensorboard_logger import configure, log_value
@@ -61,6 +62,7 @@ parser.set_defaults(augment=True)
 
 
 def main():
+    random.seed(3423432)
     torch.manual_seed(1)
     torch.cuda.manual_seed(1)
     np.random.seed(1)
@@ -118,7 +120,7 @@ def main():
         criterion = nn.CrossEntropyLoss().cuda()
         optimizer = torch.optim.SGD(model.parameters(), args.lr,
                                     momentum=args.momentum,
-                                    weight_decay=args.weight_decay)
+                                    weight_decay=0)
 
         best_acc = 0
         for epoch in range(args.start_epoch, args.epochs):
@@ -294,14 +296,9 @@ def add_regularization(model, reg_method, param):
 def add_sanity_reg(model,param):
     # doing manual regularization
 
-    for item in model.block1.parameters():
+    for item in model.parameters():
         regularize(item,param)
 
-    for item in model.block2.parameters():
-        regularize(item,param)
-
-    for item in model.block3.parameters():
-        regularize(item,param)
 
 
 def regularize(parameter,penalty):
