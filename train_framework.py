@@ -2,6 +2,7 @@ import argparse
 import os
 import shutil
 import time
+import random
 
 import torch
 import torch.nn as nn
@@ -51,20 +52,22 @@ parser.add_argument('--name', default='DenseNet_BC_100_12', type=str,
                     help='name of experiment')
 parser.add_argument('--tensorboard',
                     help='Log progress to TensorBoard', action='store_true')
+parser.add_argument('--reg', default=0, type=float,
+                    help='regularization parameter')
+parser.add_argument('--reg-method', default=0, type=int,
+                    help='regularization method')
 parser.set_defaults(bottleneck=True)
 parser.set_defaults(augment=True)
 
-best_prec1 = 0
 
 def main():
-    global args, best_prec1
+    random.seed(3423432)
+    global args, best_acc, suffix
+
+    datasize = [1000, 2000, 4000, 8000, 16000, 32000, 50000]
     args = parser.parse_args()
     if args.tensorboard: configure("runs/%s"%(args.name))
-
-    # Data loading code
-    normalize = transforms.Normalize(mean=[x/255.0 for x in [125.3, 123.0, 113.9]],
-                                     std=[x/255.0 for x in [63.0, 62.1, 66.7]])
-
+    normalize = transforms.Normalize(mean=[x/255.0 for x in [125.3, 123.0, 113.9]], std=[x/255.0 for x in [63.0, 62.1, 66.7]])
     if args.augment:
         transform_train = transforms.Compose([
             transforms.RandomCrop(32, padding=4),
@@ -81,83 +84,57 @@ def main():
         transforms.ToTensor(),
         normalize
         ])
+    dataset_train = datasets.CIFAR10('/home/gh349/bicheng/data', train=True, download=True, transform=transform_train)
+    dataset_test = datasets.CIFAR10('/home/gh349/bicheng/data/', train=False, transform=transform_test)
 
-    kwargs = {'num_workers': 1, 'pin_memory': True}
-    train_loader = torch.utils.data.DataLoader(
-        datasets.CIFAR10('/home/gh349/bicheng/data/', train=True, download=True,
-                         transform=transform_train),
-        batch_size=args.batch_size, shuffle=True, **kwargs)
-    val_loader = torch.utils.data.DataLoader(
-        datasets.CIFAR10('/home/gh349/bicheng/data/', train=False, transform=transform_test),
-        batch_size=args.batch_size, shuffle=True, **kwargs)
+    for size in datasize:
+        suffix = " - " + str(size)
+        tmp_train = random.sample(list(dataset_train), size)
+        tmp_test = dataset_test
+        kwargs = {'num_workers': 12, 'pin_memory': True}
+        train_loader = torch.utils.data.DataLoader(
+            tmp_train,
+            batch_size=args.batch_size, shuffle=True, **kwargs)
+        val_loader = torch.utils.data.DataLoader(
+            tmp_test,
+            batch_size=args.batch_size, shuffle=True, **kwargs)
 
-    # create model
-    model = dn.DenseNet3(args.layers, 10, args.growth, reduction=args.reduce,
-                         bottleneck=args.bottleneck, dropRate=args.droprate)
+        # create model
+        model = dn.DenseNet3(args.layers, 10, args.growth, reduction=args.reduce,
+                             bottleneck=args.bottleneck, dropRate=args.droprate)
+        # get the number of model parameters
+        print('Number of model parameters: {}'.format(
+            sum([p.data.nelement() for p in model.parameters()])))
+        # for training on multiple GPUs.
+        # Use CUDA_VISIBLE_DEVICES=0,1 to specify which GPUs to use
+        model = model.cuda()
 
-    # get the number of model parameters
-    print('Number of model parameters: {}'.format(
-        sum([p.data.nelement() for p in model.parameters()])))
+        cudnn.benchmark = True
 
-    # for training on multiple GPUs.
-    # Use CUDA_VISIBLE_DEVICES=0,1 to specify which GPUs to use
-    model = torch.nn.DataParallel(model).cuda()
-    # model = model.cuda()
+        # define loss function (criterion) and pptimizer
+        criterion = nn.CrossEntropyLoss().cuda()
+        optimizer = torch.optim.SGD(model.parameters(), args.lr,
+                                    momentum=args.momentum,
+                                    weight_decay=args.weight_decay)
 
-    # optionally resume from a checkpoint
-    if args.resume:
-        if os.path.isfile(args.resume):
-            print("=> loading checkpoint '{}'".format(args.resume))
-            checkpoint = torch.load(args.resume)
-            args.start_epoch = checkpoint['epoch']
-            best_prec1 = checkpoint['best_prec1']
-            model.load_state_dict(checkpoint['state_dict'])
-            print("=> loaded checkpoint '{}' (epoch {})"
-                  .format(args.resume, checkpoint['epoch']))
-        else:
-            print("=> no checkpoint found at '{}'".format(args.resume))
+        best_acc = 0
+        for epoch in range(args.start_epoch, args.epochs):
+            adjust_learning_rate(optimizer, epoch)
+            # train for one epoch
+            acc_train = train(train_loader, model, criterion, optimizer, epoch)
+            # evaluate on validation set
+            acc_val = validate(val_loader, model, criterion, epoch)
 
-    cudnn.benchmark = True
+            if args.tensorboard:
+                log_value("generalization error" + suffix, acc_train - acc_val, epoch)
 
-    # define loss function (criterion) and pptimizer
-    criterion = nn.CrossEntropyLoss().cuda()
-    optimizer = torch.optim.SGD(model.parameters(), args.lr,
-                                momentum=args.momentum,
-                                weight_decay=args.weight_decay)
+            # remember best precision and save checkpoint
+            is_best = acc_val > best_acc
+            best_acc = max(acc_val, best_acc)
 
-    file_path = os.path.join("./runs", args.name)
-    if not os.path.exists(file_path):
-        os.makedirs(file_path)
-    file1 = open(file_path + '/train_res', 'w')
-    file2 = open(file_path + '/val_res', 'w')
-
-    for epoch in range(args.start_epoch, args.epochs):
-        adjust_learning_rate(optimizer, epoch)
-        # train for one epoch
-        prec_avg = train(train_loader, model, criterion, optimizer, epoch)
-        file1.write(str(prec_avg))
-        file2.write('\n')
-
-        # evaluate on validation set
-        prec1 = validate(val_loader, model, criterion, epoch)
-        file2.write(str(prec1))
-        file2.write('\n')
-
+        print('Best accuracy' + suffix + ': ', best_acc)
         if args.tensorboard:
-            log_value("generalization error", prec_avg - prec1, epoch)
-
-        # remember best prec@1 and save checkpoint
-        is_best = prec1 > best_prec1
-        best_prec1 = max(prec1, best_prec1)
-        save_checkpoint({
-            'epoch': epoch + 1,
-            'state_dict': model.state_dict(),
-            'best_prec1': best_prec1,
-        }, is_best)
-
-    print('Best accuracy: ', best_prec1)
-    file1.close()
-    file2.close()
+            log_value('dataset accuracy', best_acc, size)
 
 
 def train(train_loader, model, criterion, optimizer, epoch):
@@ -190,7 +167,8 @@ def train(train_loader, model, criterion, optimizer, epoch):
         # compute gradient and do SGD step
         optimizer.zero_grad()
         loss.backward()
-        add_regularization(model, args.batchnorm_decay, 1.0)
+        add_regularization(model, args.reg_method, args.reg)
+        #add_regularization(model, args.batchnorm_decay, 1.0)
         optimizer.step()
 
         # measure elapsed time
@@ -206,8 +184,8 @@ def train(train_loader, model, criterion, optimizer, epoch):
                       loss=losses, top1=top1))
     # log to TensorBoard
     if args.tensorboard:
-        log_value('train_loss', losses.avg, epoch)
-        log_value('train_acc', top1.avg, epoch)
+        log_value('train_loss' + suffix, losses.avg, epoch)
+        log_value('train_acc' + suffix, top1.avg, epoch)
 
     return top1.avg
 
@@ -235,8 +213,8 @@ def validate(val_loader, model, criterion, epoch):
         # measure accuracy and record loss
         prec1 = accuracy(output.data, target, topk=(1,))[0]
         losses.update(loss.data[0], input.size(0))
-        print(top1.avg, top1.count)
-        print(prec1[0], input.size(0))
+        # print(top1.avg, top1.count)
+        # print(prec1[0], input.size(0))
 
         top1.update(prec1[0], input.size(0))
 
@@ -255,20 +233,10 @@ def validate(val_loader, model, criterion, epoch):
     print(' * Prec@1 {top1.avg:.3f}'.format(top1=top1))
     # log to TensorBoard
     if args.tensorboard:
-        log_value('val_loss', losses.avg, epoch)
-        log_value('val_acc', top1.avg, epoch)
+        log_value('val_loss' + suffix, losses.avg, epoch)
+        log_value('val_acc' + suffix, top1.avg, epoch)
     return top1.avg
 
-
-def save_checkpoint(state, is_best, filename='checkpoint.pth.tar'):
-    """Saves checkpoint to disk"""
-    directory = "runs/%s/"%(args.name)
-    if not os.path.exists(directory):
-        os.makedirs(directory)
-    filename = directory + filename
-    torch.save(state, filename)
-    if is_best:
-        shutil.copyfile(filename, 'runs/%s/'%(args.name) + 'model_best.pth.tar')
 
 class AverageMeter(object):
     """Computes and stores the average and current value"""
@@ -293,7 +261,7 @@ def adjust_learning_rate(optimizer, epoch):
     lr = args.lr * (0.1 ** (epoch // 150)) * (0.1 ** (epoch // 225))
     # log to TensorBoard
     if args.tensorboard:
-        log_value('learning_rate', lr, epoch)
+        log_value('learning_rate' + suffix, lr, epoch)
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
 
@@ -313,25 +281,98 @@ def accuracy(output, target, topk=(1,)):
     return res
 
 
-def add_regularization(model, reg_param, decay):
-    for i in range(model.nblayer):
-        weight = model.block1.layer[i].bn1.weight
-        reg = reg_param
-        for j in range(len(weight.grad.data) - 2, -1, -1):
-            # reg *= decay
-            weight.grad.data[j] += 0.5 * reg * weight.data[j]
-    for i in range(model.nblayer):
-        weight = model.block2.layer[i].bn1.weight
-        reg = reg_param
-        for j in range(len(weight.grad.data) - 2, -1, -1):
-            # reg *= decay
-            weight.grad.data[j] += 1.0 * reg * weight.data[j]
-    for i in range(model.nblayer):
-        weight = model.block3.layer[i].bn1.weight
-        reg = reg_param
-        for j in range(len(weight.grad.data) - 2, -1, -1):
-            # reg *= decay
-            weight.grad.data[j] += 2.0 * reg * weight.data[j]
+def add_regularization(model, reg_method, param):
+    if (reg_method <= 0 or reg_method > 2):
+        return
+    {1: add_combined_reg(model, param),
+     2: add_separate_reg(model, param)}[reg_method]
+
+
+def add_combined_reg(model, param):
+    # pass
+
+    init_features = len(model.block1.layer[0].bn1.weight.data)
+    for j in range(1, model.nblayer):
+        weight = model.block1.layer[j].bn1.weight
+        feature = model.block1.layer[j].conv1.weight
+
+        # take the square of each element in the feature maps
+        feature_sum = feature**2
+        # sum all 48 feature maps of the convolution layer
+        feature_sum = feature_sum.sum(0)
+        feature_sum = (feature_sum.view_as(weight.data)) # expand the feature sum into a tensor with same dimensions as BN weights
+
+        for i in range(j - 1):
+            reg = i * param / model.nblayer
+            st = init_features + i * 12
+            ed = st + 12
+            bn_grad = weight.grad.data[st:ed]
+            bn_data = weight.data[st:ed]
+            feature_sum_data = feature_sum.data[st:ed]
+            bn_grad += reg * feature_sum_data * bn_data
+
+            for k in range(48):
+                gamma = weight.data[st:ed]
+                gamma = gamma ** 2
+                conv_grad = feature.grad.data[k][st:ed]
+                conv_data = feature.data[k][st:ed]
+                conv_grad += reg * conv_data * gamma
+
+    init_features = len(model.block2.layer[0].bn1.weight.data)
+    for j in range(1, model.nblayer):
+        weight = model.block2.layer[j].bn1.weight
+        feature = model.block2.layer[j].conv1.weight
+        # take the square of each element in the feature maps
+        feature_sum = feature**2
+        # sum all 48 feature maps of the convolution layer
+        feature_sum = feature_sum.sum(0)
+        feature_sum = (feature_sum.view_as(weight.data)) # expand the feature sum into a tensor with same dimensions as BN weights
+
+        for i in range(j - 1):
+            reg = i * param / model.nblayer
+            st = init_features + i * 12
+            ed = st + 12
+            bn_grad = weight.grad.data[st:ed]
+            bn_data = weight.data[st:ed]
+            feature_sum_data = feature_sum.data[st:ed]
+            bn_grad += reg * feature_sum_data * bn_data
+
+            for k in range(48):
+                gamma = weight.data[st:ed]
+                gamma = gamma ** 2
+                conv_grad = feature.grad.data[k][st:ed]
+                conv_data = feature.data[k][st:ed]
+                conv_grad += reg * conv_data * gamma
+
+    init_features = len(model.block3.layer[0].bn1.weight.data)
+    for j in range(1, model.nblayer):
+        weight = model.block3.layer[j].bn1.weight
+        feature = model.block3.layer[j].conv1.weight
+        # take the square of each element in the feature maps
+        feature_sum = feature**2
+        # sum all 48 feature maps of the convolution layer
+        feature_sum = feature_sum.sum(0)
+        feature_sum = (feature_sum.view_as(weight.data)) # expand the feature sum into a tensor with same dimensions as BN weights
+
+        for i in range(j - 1):
+            reg = i * param / model.nblayer
+            st = init_features + i * 12
+            ed = st + 12
+            bn_grad = weight.grad.data[st:ed]
+            bn_data = weight.data[st:ed]
+            feature_sum_data = feature_sum.data[st:ed]
+            bn_grad += reg * feature_sum_data * bn_data
+
+            for k in range(48):
+                gamma = weight.data[st:ed]
+                gamma = gamma ** 2
+                conv_grad = feature.grad.data[k][st:ed]
+                conv_data = feature.data[k][st:ed]
+                conv_grad += reg * conv_data * gamma
+
+
+def add_separate_reg(model, param):
+    pass
 
 
 if __name__ == '__main__':
