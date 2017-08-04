@@ -302,8 +302,7 @@ def add_sanity_reg(model,param):
 
 
 def regularize(parameter,penalty):
-    parameter.grad.data+=penalty*parameter.data
-
+    (parameter.grad.data).add_(penalty,parameter.data)
 
 def add_combined_reg(model, param):
     # pass
