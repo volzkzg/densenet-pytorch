@@ -110,11 +110,11 @@ def main():
         # get the number of model parameters
         print('Number of model parameters: {}'.format(
             sum([p.data.nelement() for p in model.parameters()])))
+        
+        #intialize weights
+        model.apply(weights_init)
         # for training on multiple GPUs.
         # Use CUDA_VISIBLE_DEVICES=0,1 to specify which GPUs to use
-        #Initialize weights
-        model.apply(weights_init)
-
         model = model.cuda()
 
         cudnn.benchmark = True
@@ -146,9 +146,7 @@ def main():
 
 def weights_init(m):
     classname = m.__class__.__name__
-#     print classname
     if classname.find('Conv2d') != -1:
-        # print classname
         m.weight.data.uniform_(-1, 1)
     elif classname.find('BatchNorm2d') != -1:
         print classname
