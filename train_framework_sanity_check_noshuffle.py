@@ -147,9 +147,8 @@ def main():
 def weights_init(m):
     classname = m.__class__.__name__
     if classname.find('Conv2d') != -1:
-        m.weight.data.uniform_(-1, 1)
+        m.weight.data.fill_(0.5)
     elif classname.find('BatchNorm2d') != -1:
-        print classname
         m.weight.data.fill_(1)
         m.bias.data.fill_(0)
 
