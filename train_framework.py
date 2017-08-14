@@ -119,7 +119,8 @@ def main():
                                     weight_decay=args.weight_decay)
 
         best_acc = 0
-        for epoch in range(args.start_epoch, args.epochs):
+        for epoch in tqdm.trange(args.start_epoch, args.epochs,
+                                 desc='Train'):
             adjust_learning_rate(optimizer, epoch)
             # train for one epoch
             acc_train = train(train_loader, model, criterion, optimizer, epoch)
