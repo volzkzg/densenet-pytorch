@@ -3,6 +3,7 @@ import os
 import shutil
 import time
 import random
+import tqdm
 
 import torch
 import torch.nn as nn
@@ -139,15 +140,17 @@ def main():
 
 def train(train_loader, model, criterion, optimizer, epoch):
     """Train for one epoch on the training set"""
-    batch_time = AverageMeter()
+    # batch_time = AverageMeter()
     losses = AverageMeter()
     top1 = AverageMeter()
 
     # switch to train mode
     model.train()
 
-    end = time.time()
-    for i, (input, target) in enumerate(train_loader):
+    # end = time.time()
+    for i, (input, target) in tqdm.tqdm(
+            enumerate(train_loader), total=len(train_loader),
+            desc='Train Iteration=%d' % epoch, leave=False):
         target = target.cuda(async=True)
         input = input.cuda()
         input_var = torch.autograd.Variable(input)
@@ -168,20 +171,20 @@ def train(train_loader, model, criterion, optimizer, epoch):
         optimizer.zero_grad()
         loss.backward()
         add_regularization(model, args.reg_method, args.reg)
-        #add_regularization(model, args.batchnorm_decay, 1.0)
+        # add_regularization(model, args.batchnorm_decay, 1.0)
         optimizer.step()
 
         # measure elapsed time
-        batch_time.update(time.time() - end)
-        end = time.time()
+        # batch_time.update(time.time() - end)
+        # end = time.time()
 
-        if i % args.print_freq == 0:
-            print('Epoch: [{0}][{1}/{2}]\t'
-                  'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
-                  'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
-                  'Prec@1 {top1.val:.3f} ({top1.avg:.3f})'.format(
-                      epoch, i, len(train_loader), batch_time=batch_time,
-                      loss=losses, top1=top1))
+        # if i % args.print_freq == 0:
+        #     print('Epoch: [{0}][{1}/{2}]\t'
+        #           'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
+        #           'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
+        #           'Prec@1 {top1.val:.3f} ({top1.avg:.3f})'.format(
+        #               epoch, i, len(train_loader), batch_time=batch_time,
+        #               loss=losses, top1=top1))
     # log to TensorBoard
     if args.tensorboard:
         log_value('train_loss' + suffix, losses.avg, epoch)
@@ -192,15 +195,17 @@ def train(train_loader, model, criterion, optimizer, epoch):
 
 def validate(val_loader, model, criterion, epoch):
     """Perform validation on the validation set"""
-    batch_time = AverageMeter()
+    # batch_time = AverageMeter()
     losses = AverageMeter()
     top1 = AverageMeter()
 
     # switch to evaluate mode
     model.eval()
 
-    end = time.time()
-    for i, (input, target) in enumerate(val_loader):
+    # end = time.time()
+    for i, (input, target) in tqdm.tqdm(
+            enumerate(val_loader), total=len(val_loader),
+            desc='Valid Iteration=%d' % epoch, leave=False):
         target = target.cuda(async=True)
         input = input.cuda()
         input_var = torch.autograd.Variable(input, volatile=True)
@@ -219,18 +224,19 @@ def validate(val_loader, model, criterion, epoch):
         top1.update(prec1[0], input.size(0))
 
         # measure elapsed time
-        batch_time.update(time.time() - end)
-        end = time.time()
+        # batch_time.update(time.time() - end)
+        # end = time.time()
 
-        if i % args.print_freq == 0:
-            print('Test: [{0}/{1}]\t'
-                  'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
-                  'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
-                  'Prec@1 {top1.val:.3f} ({top1.avg:.3f})'.format(
-                      i, len(val_loader), batch_time=batch_time, loss=losses,
-                      top1=top1))
+        # if i % args.print_freq == 0:
+        #     print('Test: [{0}/{1}]\t'
+        #           'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
+        #           'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
+        #           'Prec@1 {top1.val:.3f} ({top1.avg:.3f})'.format(
+        #               i, len(val_loader), batch_time=batch_time, loss=losses,
+        #               top1=top1))
 
-    print(' * Prec@1 {top1.avg:.3f}'.format(top1=top1))
+    # print(' * Prec@1 {top1.avg:.3f}'.format(top1=top1))
+
     # log to TensorBoard
     if args.tensorboard:
         log_value('val_loss' + suffix, losses.avg, epoch)
